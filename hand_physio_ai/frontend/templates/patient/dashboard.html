@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}My Daily Therapy - HandPhysio AI{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+  <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main);">Today's Physical Therapy</h1>
+  <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.25rem;">
+    Review your clinician-prescribed regimen and launch your guided webcam session.
+  </p>
+</div>
+
+<div class="disclaimer-banner">
+  <span>⚕️</span>
+  <span>
+    <strong>Clinical Notice:</strong> Camera-based estimate, not a clinical measurement.
+    Your physiotherapist oversees all clinical prescriptions and decisions.
+  </span>
+</div>
+
+{% if prescriptions and prescriptions|length > 0 %}
+  {% set current = prescriptions[0] %}
+  <div class="grid-2col" style="margin-bottom: 2.5rem;">
+    <!-- Active Prescription Card -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+        <div>
+          <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-teal); font-weight: 700;">
+            ACTIVE PRESCRIPTION
+          </span>
+          <h2 style="font-size: 1.4rem; font-weight: 700; margin-top: 0.2rem;">{{ current.exercise_name }}</h2>
+        </div>
+        <span class="brand-badge" style="background: rgba(0, 210, 255, 0.2); color: var(--primary);">
+          {{ current.hand|upper }} HAND
+        </span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; background: #0c1220; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);">{{ current.target_sets }}</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Sets</div>
+        </div>
+        <div style="text-align: center; border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">{{ current.target_reps }}</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Reps / Set</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-teal);">{{ current.target_rom }}</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Target ROM</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <span class="field-label">Clinician Instructions</span>
+        <p style="font-size: 0.9rem; color: var(--text-main); margin-top: 0.2rem;">
+          {{ current.instructions }}
+        </p>
+      </div>
+
+      <div style="margin-bottom: 1.75rem;">
+        <span class="field-label" style="color: #ff9f43;">Precautions</span>
+        <p style="font-size: 0.88rem; color: #ffd080; margin-top: 0.2rem;">
+          ⚠️ {{ current.precautions }}
+        </p>
+      </div>
+
+      <a href="/patient/workout/{{ current.id }}" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+        Start Camera Exercise Session →
+      </a>
+    </div>
+
+    <!-- Anatomical SVG Diagram Card -->
+    <div class="card anatomy-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Target Anatomy Diagram</h3>
+        <span class="clinician-approval-tag">✓ Approved by Clinician</span>
+      </div>
+
+      <div class="anatomy-flex">
+        <!-- Responsive Anatomical Hand SVG -->
+        <div class="hand-svg-container">
+          <svg viewBox="0 0 200 240" class="hand-svg" id="anatomySvg">
+            <!-- Wrist base -->
+            <rect x="75" y="195" width="50" height="35" rx="6" 
+                  fill="{% if current.exercise_code == 'wrist_tilt' %}#ffb300{% else %}#1a243b{% endif %}" 
+                  stroke="{% if current.exercise_code == 'wrist_tilt' %}#ffe066{% else %}#35486e{% endif %}" stroke-width="2"/>
+            
+            <!-- Palm area -->
+            <path d="M 65 130 C 60 160, 65 195, 75 195 L 125 195 C 135 195, 140 160, 135 130 Z" 
+                  fill="{% if current.exercise_code == 'fist_flexion' %}#005577{% else %}#19243c{% endif %}" 
+                  stroke="#35486e" stroke-width="2"/>
+
+            <!-- Thumb -->
+            <path d="M 65 140 C 45 145, 30 135, 35 120 C 40 105, 55 115, 68 128 Z" 
+                  fill="{% if current.exercise_code == 'thumb_opposition' %}#00e5a3{% else %}#19243c{% endif %}" 
+                  stroke="{% if current.exercise_code == 'thumb_opposition' %}#80ffd4{% else %}#35486e{% endif %}" stroke-width="2"/>
+
+            <!-- Index Finger -->
+            <rect x="68" y="55" width="14" height="75" rx="7" 
+                  fill="{% if current.exercise_code == 'fist_flexion' or current.exercise_code == 'thumb_opposition' %}#00d2ff{% else %}#19243c{% endif %}" 
+                  stroke="#35486e" stroke-width="2"/>
+
+            <!-- Middle Finger -->
+            <rect x="86" y="40" width="14" height="90" rx="7" 
+                  fill="{% if current.exercise_code == 'fist_flexion' %}#00d2ff{% else %}#19243c{% endif %}" 
+                  stroke="#35486e" stroke-width="2"/>
+
+            <!-- Ring Finger -->
+            <rect x="104" y="50" width="14" height="80" rx="7" 
+                  fill="{% if current.exercise_code == 'fist_flexion' %}#00d2ff{% else %}#19243c{% endif %}" 
+                  stroke="#35486e" stroke-width="2"/>
+
+            <!-- Pinky Finger -->
+            <rect x="122" y="70" width="13" height="60" rx="6.5" 
+                  fill="{% if current.exercise_code == 'fist_flexion' %}#00d2ff{% else %}#19243c{% endif %}" 
+                  stroke="#35486e" stroke-width="2"/>
+
+            <!-- Highlight marker dot for target focus -->
+            {% if current.exercise_code == 'thumb_opposition' %}
+              <circle cx="38" cy="116" r="6" fill="#00e5a3" stroke="#fff" stroke-width="2"/>
+              <circle cx="75" cy="62" r="6" fill="#00d2ff" stroke="#fff" stroke-width="2"/>
+              <line x1="44" y1="116" x2="69" y2="68" stroke="#00e5a3" stroke-width="2" stroke-dasharray="3,3"/>
+            {% elif current.exercise_code == 'wrist_tilt' %}
+              <circle cx="100" cy="210" r="7" fill="#ffb300" stroke="#fff" stroke-width="2"/>
+            {% elif current.exercise_code == 'fist_flexion' %}
+              <circle cx="75" cy="95" r="5" fill="#00d2ff"/>
+              <circle cx="93" cy="85" r="5" fill="#00d2ff"/>
+              <circle cx="111" cy="90" r="5" fill="#00d2ff"/>
+              <circle cx="128" cy="100" r="5" fill="#00d2ff"/>
+            {% endif %}
+          </svg>
+        </div>
+
+        <!-- Anatomical text entered/approved by clinician -->
+        <div class="anatomy-details">
+          <div class="anatomy-field">
+            <span class="field-label">Target Region</span>
+            <div class="field-value">{{ current.target_region or "Hand & Wrist" }}</div>
+          </div>
+          <div class="anatomy-field">
+            <span class="field-label">Target Joints</span>
+            <div class="field-value">{{ current.target_joints or "Finger joint columns" }}</div>
+          </div>
+          <div class="anatomy-field">
+            <span class="field-label">Target Muscles</span>
+            <div class="field-value" style="font-size: 0.85rem; color: #a4b4cc;">
+              {{ current.target_muscles or "Digital flexors" }}
+            </div>
+          </div>
+          <div class="anatomy-field" style="margin-top: 0.6rem;">
+            <span class="field-label">Clinical Purpose</span>
+            <div class="field-value" style="font-size: 0.85rem; line-height: 1.4;">
+              {{ current.clinical_purpose or "Rehabilitation mobility reconditioning." }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="card" style="text-align: center; padding: 3rem 1rem;">
+    <p style="font-size: 1.1rem; color: var(--text-muted);">No active prescriptions assigned yet.</p>
+    <p style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.35rem;">
+      Your physiotherapist will assign your exercise plan soon.
+    </p>
+  </div>
+{% endif %}
+
+<!-- Workout History Section -->
+<div class="card">
+  <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">Past Session History</h3>
+  {% if sessions and sessions|length > 0 %}
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-dim); text-transform: uppercase; font-size: 0.75rem;">
+            <th style="padding: 0.75rem 0.5rem;">Date</th>
+            <th style="padding: 0.75rem 0.5rem;">Exercise</th>
+            <th style="padding: 0.75rem 0.5rem;">Completed Reps</th>
+            <th style="padding: 0.75rem 0.5rem;">Session ROM</th>
+            <th style="padding: 0.75rem 0.5rem;">Tracking Quality</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sessions %}
+            <tr style="border-bottom: 1px solid rgba(35, 49, 82, 0.4);">
+              <td style="padding: 0.75rem 0.5rem;">{{ s.start_time[:16] }}</td>
+              <td style="padding: 0.75rem 0.5rem; font-weight: 600;">{{ s.exercise_name }}</td>
+              <td style="padding: 0.75rem 0.5rem;">
+                <span style="color: var(--accent-teal); font-weight: 700;">{{ s.reps_completed }}</span> / {{ s.target_reps }}
+              </td>
+              <td style="padding: 0.75rem 0.5rem; font-weight: 600;">{{ s.session_rom }}°</td>
+              <td style="padding: 0.75rem 0.5rem;">
+                {% if s.reliability_status == 'reliable' %}
+                  <span style="color: var(--accent-teal);">● Reliable</span>
+                {% else %}
+                  <span style="color: var(--warning);">▲ Degraded</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p style="color: var(--text-dim); font-size: 0.85rem;">No completed sessions yet. Launch your first session above!</p>
+  {% endif %}
+</div>
+{% endblock %}

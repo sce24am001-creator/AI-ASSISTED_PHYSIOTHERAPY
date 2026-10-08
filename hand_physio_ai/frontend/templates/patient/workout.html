@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Live Therapy Session - HandPhysio AI{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+  <div>
+    <a href="/patient" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Back to Dashboard</a>
+    <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-main); margin-top: 0.25rem;">
+      {{ prescription.exercise_name }}
+    </h1>
+  </div>
+  <div style="display: flex; gap: 0.75rem;">
+    <button onclick="resetCounter()" class="btn btn-secondary btn-sm" id="resetBtn">
+      ↺ Reset Counter
+    </button>
+    <button onclick="finishSession()" class="btn btn-success" id="finishBtn">
+      ✓ Finish & Save Session
+    </button>
+  </div>
+</div>
+
+<div class="disclaimer-banner" style="margin-bottom: 1rem;">
+  <span>⚠️</span>
+  <span><strong>Mandatory Clinical Notice:</strong> Camera-based estimate, not a clinical measurement. If sharp pain occurs, stop immediately.</span>
+</div>
+
+<div class="workout-container">
+  <!-- Live Camera Video Box with Skeleton Stream -->
+  <div>
+    <div class="video-frame-box" id="videoBox">
+      <img 
+        src="/api/video_feed/{{ prescription.id }}" 
+        class="video-stream-img" 
+        id="liveStreamImg"
+        alt="Live Webcam Skeletal Feed"
+      >
+    </div>
+    
+    <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim);">
+      <span>Webcam: Built-in 0 (OpenCV DirectShow)</span>
+      <span>Target Hand: <strong style="color: var(--primary);">{{ prescription.hand|upper }}</strong></span>
+    </div>
+  </div>
+
+  <!-- Live Telemetry HUD -->
+  <div class="hud-card">
+    <!-- Reps Counter Card -->
+    <div class="card hud-stat-box">
+      <div class="hud-stat-number" id="hudRepsDisplay">0</div>
+      <div class="hud-stat-label">Reps Completed / {{ prescription.target_reps }} Prescribed</div>
+      
+      <div class="progress-track">
+        <div class="progress-fill" id="hudProgressBar"></div>
+      </div>
+    </div>
+
+    <!-- Live Angle / Kinematic Metric Card -->
+    <div class="card hud-stat-box">
+      <div class="hud-stat-number" id="hudValueDisplay" style="color: var(--accent-teal); font-size: 2.3rem;">--</div>
+      <div class="hud-stat-label" id="hudUnitDisplay">Current Angle</div>
+      <div id="hudStateBadge" style="display: inline-block; margin-top: 0.5rem; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #1c273e; color: var(--text-muted);">
+        RESTING
+      </div>
+    </div>
+
+    <!-- Clinician Instructions Card -->
+    <div class="card" style="font-size: 0.85rem;">
+      <span class="field-label" style="display: block; margin-bottom: 0.35rem;">Prescribed Guidance</span>
+      <p style="color: var(--text-main); line-height: 1.4;">{{ prescription.instructions }}</p>
+      
+      <span class="field-label" style="display: block; margin-top: 0.75rem; margin-bottom: 0.35rem; color: #ff9f43;">Precautions</span>
+      <p style="color: #ffd080; line-height: 1.4;">{{ prescription.precautions }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Session Completion Summary Modal -->
+<div class="modal-overlay" id="summaryModal">
+  <div class="modal-content">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <span style="font-size: 2rem;">🎉</span>
+      <h2 class="modal-title">Session Complete!</h2>
+      <p style="font-size: 0.88rem; color: var(--text-muted);">
+        Your exercise telemetry has been compiled for clinician review.
+      </p>
+    </div>
+
+    <div style="background: #0d1424; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <span class="field-label">Reps Completed</span>
+          <div style="font-size: 1.3rem; font-weight: 800; color: var(--accent-teal);" id="modalReps">0</div>
+        </div>
+        <div>
+          <span class="field-label">Target Prescribed</span>
+          <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-main);">{{ prescription.target_reps }}</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+        <div>
+          <span class="field-label" style="font-size: 0.7rem;">Mean ROM</span>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="modalMeanRom">0.0</div>
+        </div>
+        <div>
+          <span class="field-label" style="font-size: 0.7rem;">Max ROM</span>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);" id="modalMaxRom">0.0</div>
+        </div>
+        <div>
+          <span class="field-label" style="font-size: 0.7rem;">Min ROM</span>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-dim);" id="modalMinRom">0.0</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-bottom: 1.5rem;">
+      Note: Camera-based estimate, not a clinical measurement. Saved to your clinical record.
+    </p>
+
+    <button onclick="saveAndExit()" class="btn btn-primary" style="width: 100%; padding: 0.85rem;" id="saveSessionBtn">
+      Save Session & Return to Dashboard
+    </button>
+  </div>
+</div>
+
+<script>
+  const prescriptionId = {{ prescription.id }};
+  const targetReps = {{ prescription.target_reps }};
+  let sessionStartTime = new Date().toISOString();
+  let latestSummary = null;
+  let pollingInterval = null;
+
+  // Poll live telemetry state from backend every 200ms
+  function startTelemetryPolling() {
+    pollingInterval = setInterval(async () => {
+      try {
+        const resp = await fetch(`/api/live_state/${prescriptionId}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        if (data.active) {
+          // Update HUD
+          const reps = data.rep_count || 0;
+          document.getElementById('hudRepsDisplay').textContent = reps;
+          
+          const pct = Math.min(100, Math.round((reps / targetReps) * 100));
+          document.getElementById('hudProgressBar').style.width = pct + '%';
+
+          document.getElementById('hudValueDisplay').textContent = data.smoothed_value ? data.smoothed_value.toFixed(1) : '--';
+          
+          const badge = document.getElementById('hudStateBadge');
+          badge.textContent = data.state || 'RESTING';
+          if (data.state === 'IN_REP') {
+            badge.style.background = 'rgba(0, 229, 163, 0.2)';
+            badge.style.color = '#00e5a3';
+          } else {
+            badge.style.background = '#1c273e';
+            badge.style.color = 'var(--text-muted)';
+          }
+
+          if (data.session_summary) {
+            latestSummary = data.session_summary;
+          }
+        }
+      } catch (err) {
+        console.error('Telemetry polling error:', err);
+      }
+    }, 200);
+  }
+
+  async function resetCounter() {
+    await fetch(`/api/reset_session/${prescriptionId}`, { method: 'POST' });
+    document.getElementById('hudRepsDisplay').textContent = '0';
+    document.getElementById('hudProgressBar').style.width = '0%';
+  }
+
+  function finishSession() {
+    clearInterval(pollingInterval);
+    const modal = document.getElementById('summaryModal');
+    modal.style.display = 'flex';
+
+    const reps = latestSummary ? latestSummary.reps_completed : 0;
+    const meanRom = latestSummary ? latestSummary.mean_rom : 0.0;
+    const maxRom = latestSummary ? latestSummary.max_rom : 0.0;
+    const minRom = latestSummary ? latestSummary.min_rom : 0.0;
+
+    document.getElementById('modalReps').textContent = reps;
+    document.getElementById('modalMeanRom').textContent = meanRom + '°';
+    document.getElementById('modalMaxRom').textContent = maxRom + '°';
+    document.getElementById('modalMinRom').textContent = minRom + '°';
+  }
+
+  async function saveAndExit() {
+    const sessionEndTime = new Date().toISOString();
+    const payload = {
+      prescription_id: prescriptionId,
+      start_time: sessionStartTime,
+      end_time: sessionEndTime,
+      reps_completed: latestSummary ? latestSummary.reps_completed : 0,
+      session_rom: latestSummary ? latestSummary.mean_rom : 0.0,
+      reliability_status: "reliable",
+      measurements: latestSummary ? latestSummary.completed_reps : []
+    };
+
+    try {
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      window.location.href = '/patient';
+    } catch (err) {
+      console.error('Error saving session:', err);
+      window.location.href = '/patient';
+    }
+  }
+
+  // Start telemetry
+  startTelemetryPolling();
+</script>
+{% endblock %}

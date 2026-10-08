@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Sign In - HandPhysio AI{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 3rem auto;">
+  <div class="card" style="padding: 2.25rem;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--text-main);">HandPhysio AI</h1>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.35rem;">
+        Rehabilitation Movement Analysis Platform
+      </p>
+    </div>
+
+    <div class="disclaimer-banner">
+      <span>🔒</span>
+      <span>Secure clinical access. Patients see only their prescribed exercises.</span>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div style="margin-bottom: 1.25rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase;">
+          Username
+        </label>
+        <input 
+          type="text" 
+          id="usernameInput" 
+          required 
+          placeholder="e.g. john_doe or dr_sarah"
+          style="width: 100%; padding: 0.75rem 1rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.95rem;"
+        >
+      </div>
+
+      <div style="margin-bottom: 1.75rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase;">
+          Password
+        </label>
+        <input 
+          type="password" 
+          id="passwordInput" 
+          required 
+          placeholder="••••••••"
+          style="width: 100%; padding: 0.75rem 1rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.95rem;"
+        >
+      </div>
+
+      <div id="loginError" style="display: none; color: var(--danger); font-size: 0.85rem; margin-bottom: 1rem; text-align: center;"></div>
+
+      <button type="submit" id="submitLoginBtn" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
+        Sign In to Portal
+      </button>
+    </form>
+
+    <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+      <p style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700; text-align: center; margin-bottom: 0.75rem;">
+        Quick University Demo Logins
+      </p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <button onclick="fillDemo('john_doe', 'patient123')" class="btn btn-secondary btn-sm" type="button">
+          👤 Patient (John)
+        </button>
+        <button onclick="fillDemo('dr_sarah', 'physio123')" class="btn btn-secondary btn-sm" type="button">
+          🩺 Clinician (Dr. Sarah)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function fillDemo(u, p) {
+    document.getElementById('usernameInput').value = u;
+    document.getElementById('passwordInput').value = p;
+    document.getElementById('submitLoginBtn').click();
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const u = document.getElementById('usernameInput').value.trim();
+    const p = document.getElementById('passwordInput').value;
+    const errBox = document.getElementById('loginError');
+    errBox.style.display = 'none';
+
+    try {
+      const resp = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      const data = await resp.json();
+
+      if (resp.ok && data.success) {
+        if (data.user.role === 'clinician') {
+          window.location.href = '/clinician';
+        } else {
+          window.location.href = '/patient';
+        }
+      } else {
+        errBox.textContent = data.error || 'Authentication failed.';
+        errBox.style.display = 'block';
+      }
+    } catch (err) {
+      errBox.textContent = 'Server connection error.';
+      errBox.style.display = 'block';
+    }
+  }
+</script>
+{% endblock %}

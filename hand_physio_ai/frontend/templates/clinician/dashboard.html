@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% block title %}Clinician Portal - HandPhysio AI{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main);">Physiotherapy Clinical Management</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.25rem;">
+      Manage patient rehabilitation programs, configure exercise prescriptions, and monitor Range of Motion (ROM) trends.
+    </p>
+  </div>
+  <button onclick="openPatientModal()" class="btn btn-primary" id="openAddPatientBtn">
+    + Add New Patient
+  </button>
+</div>
+
+<!-- Mandatory Clinical Notice -->
+<div class="disclaimer-banner">
+  <span>⚕️</span>
+  <span>
+    <strong>Clinician Authority Notice:</strong> The AI platform does not diagnose, prescribe, or modify clinical treatment.
+    All prescription targets and clinical decisions are determined solely by the attending physiotherapist.
+    Webcam measurements are camera-based estimates, not certified medical goniometry.
+  </span>
+</div>
+
+<!-- Main Clinician 2-Column Grid -->
+<div class="grid-2col" style="margin-bottom: 2rem;">
+  <!-- Left Column: Patient Directory & Prescriptions -->
+  <div>
+    <!-- Patient Directory Card -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Patient Directory</h2>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;" id="patientListContainer">
+        {% for p in patients %}
+          <div class="card" style="padding: 1rem; background: #0c1220; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s ease;" 
+               onclick="selectPatient({{ p.patient_id }}, '{{ p.full_name }}')"
+               id="patientCard-{{ p.patient_id }}">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-main);">{{ p.full_name }}</h4>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                  DOB: {{ p.date_of_birth or 'N/A' }} | User: <code>{{ p.username }}</code>
+                </div>
+              </div>
+              <span class="btn btn-secondary btn-sm">Inspect Progress →</span>
+            </div>
+            {% if p.notes %}
+              <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.5rem; line-height: 1.3;">
+                Notes: {{ p.notes }}
+              </p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Create Prescription Card -->
+    <div class="card">
+      <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem;">Assign New Prescription</h3>
+      <form id="createPrescriptionForm" onsubmit="handleCreatePrescription(event)">
+        <div style="margin-bottom: 1rem;">
+          <label class="field-label">Select Patient</label>
+          <select id="prescPatientSelect" required style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.9rem;">
+            {% for p in patients %}
+              <option value="{{ p.patient_id }}">{{ p.full_name }} ({{ p.username }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+          <div>
+            <label class="field-label">Exercise</label>
+            <select id="prescExerciseSelect" required style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.9rem;">
+              {% for e in exercises %}
+                <option value="{{ e.id }}">{{ e.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Target Hand</label>
+            <select id="prescHandSelect" required style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.9rem;">
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+          <div>
+            <label class="field-label">Target Sets</label>
+            <input type="number" id="prescSetsInput" value="3" min="1" max="10" required style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+          </div>
+          <div>
+            <label class="field-label">Target Reps</label>
+            <input type="number" id="prescRepsInput" value="10" min="1" max="50" required style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+          </div>
+          <div>
+            <label class="field-label">Target ROM</label>
+            <input type="number" id="prescRomInput" value="90" step="0.1" required style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label class="field-label">Clinician Instructions</label>
+          <textarea id="prescInstructionsInput" required rows="2" style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.88rem;" placeholder="e.g. Keep wrist steady on armrest..."></textarea>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label class="field-label" style="color: #ff9f43;">Precautions</label>
+          <textarea id="prescPrecautionsInput" required rows="2" style="width: 100%; padding: 0.65rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.88rem;" placeholder="e.g. Stop if sharp palmar pain occurs..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitPrescriptionBtn">
+          Save & Issue Prescription
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right Column: Patient Kinematics & Charts -->
+  <div>
+    <!-- Interactive Progress & ROM Trend Card -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 700;">Rehabilitation Telemetry Trends</h3>
+          <span style="font-size: 0.85rem; color: var(--text-muted);" id="activePatientNameHeader">Patient: John Doe</span>
+        </div>
+        <span class="brand-badge" id="sessionCountBadge">Historical Sessions</span>
+      </div>
+
+      <!-- Chart.js 1: Range of Motion (ROM) Over Time -->
+      <div style="margin-bottom: 1.5rem; background: #0b101c; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+          Range of Motion (ROM) Trend Over Time
+        </div>
+        <div style="height: 200px;">
+          <canvas id="romChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart.js 2: Exercise Adherence (Reps Completed) -->
+      <div style="background: #0b101c; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">
+          Adherence (Reps Completed Per Session)
+        </div>
+        <div style="height: 180px;">
+          <canvas id="adherenceChart"></canvas>
+        </div>
+      </div>
+
+      <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 1rem; text-align: center;">
+        Note: Graphs display empirical measurements only. No unvalidated recovery percentage is computed.
+      </div>
+    </div>
+
+    <!-- Edit Exercise Anatomy Targets Card -->
+    <div class="card">
+      <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem;">Edit Patient Anatomical Guidance</h3>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Customize the anatomical targets and clinical purpose text shown to patients on their dashboard.
+      </p>
+
+      <form id="editTargetsForm" onsubmit="handleUpdateTargets(event)">
+        <div style="margin-bottom: 0.75rem;">
+          <label class="field-label">Select Exercise to Edit</label>
+          <select id="editExerciseTargetSelect" onchange="loadTargetDetails(this.value)" style="width: 100%; padding: 0.6rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+            {% for e in exercises %}
+              <option value="{{ e.id }}">{{ e.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="margin-bottom: 0.75rem;">
+          <label class="field-label">Target Region</label>
+          <input type="text" id="targetRegionInput" required style="width: 100%; padding: 0.6rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+        </div>
+
+        <div style="margin-bottom: 0.75rem;">
+          <label class="field-label">Target Joints</label>
+          <input type="text" id="targetJointsInput" required style="width: 100%; padding: 0.6rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+        </div>
+
+        <div style="margin-bottom: 0.75rem;">
+          <label class="field-label">Target Muscles</label>
+          <input type="text" id="targetMusclesInput" required style="width: 100%; padding: 0.6rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label class="field-label">Clinical Purpose</label>
+          <textarea id="targetPurposeInput" rows="2" required style="width: 100%; padding: 0.6rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.88rem;"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">
+          Update Anatomical Guidance
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add New Patient -->
+<div class="modal-overlay" id="addPatientModal">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 style="font-size: 1.3rem; font-weight: 700;">Add New Patient Profile</h3>
+      <button onclick="closePatientModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+    </div>
+
+    <form id="addPatientForm" onsubmit="handleCreatePatient(event)">
+      <div style="margin-bottom: 1rem;">
+        <label class="field-label">Full Name</label>
+        <input type="text" id="newPatientName" required placeholder="e.g. Jane Smith" style="width: 100%; padding: 0.7rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+        <div>
+          <label class="field-label">Username</label>
+          <input type="text" id="newPatientUsername" required placeholder="e.g. jane_smith" style="width: 100%; padding: 0.7rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+        </div>
+        <div>
+          <label class="field-label">Password</label>
+          <input type="password" id="newPatientPassword" required placeholder="••••••••" style="width: 100%; padding: 0.7rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label class="field-label">Date of Birth</label>
+        <input type="date" id="newPatientDob" style="width: 100%; padding: 0.7rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main);">
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label class="field-label">Clinical Rehabilitation Notes</label>
+        <textarea id="newPatientNotes" rows="3" placeholder="Condition, surgical history, or targeted goals..." style="width: 100%; padding: 0.7rem; background: #0c1220; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-size: 0.88rem;"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Create Patient Profile</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  let currentPatientId = 1;
+  let romChartInstance = null;
+  let adherenceChartInstance = null;
+  const exercisesData = {{ exercises|tojson }};
+
+  function openPatientModal() {
+    document.getElementById('addPatientModal').style.display = 'flex';
+  }
+  function closePatientModal() {
+    document.getElementById('addPatientModal').style.display = 'none';
+  }
+
+  function selectPatient(id, name) {
+    currentPatientId = id;
+    document.getElementById('activePatientNameHeader').textContent = 'Patient: ' + name;
+    document.getElementById('prescPatientSelect').value = id;
+    loadPatientTrends(id);
+  }
+
+  async function loadPatientTrends(patientId) {
+    try {
+      const resp = await fetch(`/api/patients/${patientId}/trends`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+
+      document.getElementById('sessionCountBadge').textContent = `${data.total_sessions} Sessions Recorded`;
+      renderCharts(data.labels, data.rom_trend, data.reps_trend);
+    } catch (err) {
+      console.error('Error loading patient trends:', err);
+    }
+  }
+
+  function renderCharts(labels, romTrend, repsTrend) {
+    const ctxRom = document.getElementById('romChart').getContext('2d');
+    const ctxAdh = document.getElementById('adherenceChart').getContext('2d');
+
+    if (romChartInstance) romChartInstance.destroy();
+    if (adherenceChartInstance) adherenceChartInstance.destroy();
+
+    const chartLabels = labels.length ? labels : ['No Sessions'];
+    const romData = romTrend.length ? romTrend : [0];
+    const repsData = repsTrend.length ? repsTrend : [0];
+
+    // ROM Trend Line Chart
+    romChartInstance = new Chart(ctxRom, {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Session ROM (° / metric)',
+          data: romData,
+          borderColor: '#00d2ff',
+          backgroundColor: 'rgba(0, 210, 255, 0.15)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 5,
+          pointBackgroundColor: '#00d2ff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: '#1a243b' }, ticks: { color: '#8b9bb4' } },
+          y: { grid: { color: '#1a243b' }, ticks: { color: '#8b9bb4' }, beginAtZero: true }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // Adherence Bar Chart
+    adherenceChartInstance = new Chart(ctxAdh, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Reps Completed',
+          data: repsData,
+          backgroundColor: 'rgba(0, 229, 163, 0.7)',
+          borderColor: '#00e5a3',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { color: '#1a243b' }, ticks: { color: '#8b9bb4' } },
+          y: { grid: { color: '#1a243b' }, ticks: { color: '#8b9bb4' }, beginAtZero: true }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  function loadTargetDetails(exerciseId) {
+    const ex = exercisesData.find(e => e.id == exerciseId);
+    if (ex) {
+      document.getElementById('targetRegionInput').value = ex.target_region || '';
+      document.getElementById('targetJointsInput').value = ex.target_joints || '';
+      document.getElementById('targetMusclesInput').value = ex.target_muscles || '';
+      document.getElementById('targetPurposeInput').value = ex.clinical_purpose || '';
+    }
+  }
+
+  async function handleCreatePrescription(e) {
+    e.preventDefault();
+    const payload = {
+      patient_id: parseInt(document.getElementById('prescPatientSelect').value),
+      exercise_id: parseInt(document.getElementById('prescExerciseSelect').value),
+      hand: document.getElementById('prescHandSelect').value,
+      target_sets: parseInt(document.getElementById('prescSetsInput').value),
+      target_reps: parseInt(document.getElementById('prescRepsInput').value),
+      target_rom: parseFloat(document.getElementById('prescRomInput').value),
+      instructions: document.getElementById('prescInstructionsInput').value.trim(),
+      precautions: document.getElementById('prescPrecautionsInput').value.trim()
+    };
+
+    const resp = await fetch('/api/prescriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (resp.ok) {
+      alert('Prescription successfully created and assigned to patient!');
+      window.location.reload();
+    } else {
+      const err = await resp.json();
+      alert('Error creating prescription: ' + (err.error || 'Unknown error'));
+    }
+  }
+
+  async function handleCreatePatient(e) {
+    e.preventDefault();
+    const payload = {
+      full_name: document.getElementById('newPatientName').value.trim(),
+      username: document.getElementById('newPatientUsername').value.trim(),
+      password: document.getElementById('newPatientPassword').value,
+      date_of_birth: document.getElementById('newPatientDob').value,
+      notes: document.getElementById('newPatientNotes').value.trim()
+    };
+
+    const resp = await fetch('/api/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (resp.ok) {
+      alert('Patient account and clinical profile created!');
+      window.location.reload();
+    } else {
+      const err = await resp.json();
+      alert('Error: ' + (err.error || 'Failed to create patient'));
+    }
+  }
+
+  async function handleUpdateTargets(e) {
+    e.preventDefault();
+    const exId = document.getElementById('editExerciseTargetSelect').value;
+    const payload = {
+      target_region: document.getElementById('targetRegionInput').value.trim(),
+      target_joints: document.getElementById('targetJointsInput').value.trim(),
+      target_muscles: document.getElementById('targetMusclesInput').value.trim(),
+      clinical_purpose: document.getElementById('targetPurposeInput').value.trim()
+    };
+
+    const resp = await fetch(`/api/exercises/${exId}/targets`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (resp.ok) {
+      alert('Anatomical guidance updated! Patients will now see these approved instructions.');
+      window.location.reload();
+    } else {
+      alert('Failed to update guidance.');
+    }
+  }
+
+  // Initial load
+  if (exercisesData.length > 0) {
+    loadTargetDetails(exercisesData[0].id);
+  }
+  loadPatientTrends(currentPatientId);
+</script>
+{% endblock %}
